@@ -19,16 +19,18 @@ public abstract class AbstractDbRouterStrategy implements IDbRouterStrategy {
     public void clear() {
         DbContextHolder.clearDBKey();
         DbContextHolder.clearTBKey();
+        DbContextHolder.clearLoadBalance();
+        DbContextHolder.clearOpType();
     }
 
     @Override
     public void setDbKey(Integer dbId) {
-        DbContextHolder.setDBKey(String.format("%02d", dbId));
+        DbContextHolder.setDBKey(DbContextHolder.DB_PREFIX + String.format("%02d", dbId));
     }
 
     @Override
     public void setTbKey(Integer tbId) {
-        DbContextHolder.setTBKey(String.format("%03d", tbId));
+        DbContextHolder.setTBKey(String.format("%02d", tbId));
     }
 
     @Override

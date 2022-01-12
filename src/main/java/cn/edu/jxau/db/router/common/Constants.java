@@ -19,4 +19,26 @@ public class Constants {
         private Integer type;
         private String desc;
     }
+
+
+    @AllArgsConstructor
+    @Getter
+    public enum DataSourceType {
+        WRITE(0, "写节点"),
+        READ(1, "读节点");
+
+        private Integer type;
+        private String desc;
+    }
+
+    @AllArgsConstructor
+    @Getter
+    public enum LoadBalance {
+        POLL(0, "轮询"),
+        RANDOM(1, "随机");
+
+
+        private Integer type;
+        private String desc;
+    }
 }

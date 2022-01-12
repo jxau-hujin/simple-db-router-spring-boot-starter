@@ -25,8 +25,8 @@ public class DbRouterStrategyHash extends AbstractDbRouterStrategy {
         int dbIdx = idx / getTbCount() + 1;
         int tbIdx = idx - getTbCount() * (dbIdx - 1);
 
-        DbContextHolder.setDBKey(String.format("%02d", dbIdx));
+        DbContextHolder.setDBKey(DbContextHolder.DB_PREFIX + String.format("%02d", dbIdx));
         DbContextHolder.setTBKey(String.format("%02d", tbIdx));
-        logger.debug("数据库路由 dbIdx：{} tbIdx：{}",  dbIdx, tbIdx);
+        logger.info("数据库路由 dbIdx：{} tbIdx：{} val: {}",  dbIdx, tbIdx, val);
     }
 }

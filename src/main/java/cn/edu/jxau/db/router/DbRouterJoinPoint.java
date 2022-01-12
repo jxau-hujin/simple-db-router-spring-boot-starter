@@ -48,16 +48,23 @@ public class DbRouterJoinPoint {
             throw new RuntimeException("annotation DBRouter key is null！");
         }
 
-        Constants.DbRouterStrategy strategyEnum = dbRouter.strategy();
-
         String dbKeyAttr = getAttrValue(dbKey, jp.getArgs());
+
+        Constants.DbRouterStrategy strategyEnum = dbRouter.strategy();
         IDbRouterStrategy strategy = dbRouterStrategyMap.get(strategyEnum);
+        DbContextHolder.setLoadBalance(dbRouter.loadBalance());
+        DbContextHolder.setOpType(dbRouter.operationType());
 
         strategy.doRouter(dbKeyAttr);
 
         try {
             return jp.proceed();
         } finally {
+            String v1 = DbContextHolder.getDBKey();
+            String v2 = DbContextHolder.getTBKey();
+            String v3 = DbContextHolder.getOpType().getDesc();
+            String v4 = DbContextHolder.getLoadBalance().getDesc();
+            logger.info("dbKey:{}, tbKey:{}, opType:{}, loadBalance:{}", v1, v2, v3, v4);
             strategy.clear();
         }
     }

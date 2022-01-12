@@ -32,4 +32,13 @@ public @interface DbRouter {
      */
     Constants.DbRouterStrategy strategy() default Constants.DbRouterStrategy.HASHCODE;
 
+    /**
+     * 读写分离
+     */
+    Constants.DataSourceType operationType() default Constants.DataSourceType.WRITE;
+
+    /**
+     * 负载均衡算法
+     */
+    Constants.LoadBalance loadBalance() default Constants.LoadBalance.POLL;
 }

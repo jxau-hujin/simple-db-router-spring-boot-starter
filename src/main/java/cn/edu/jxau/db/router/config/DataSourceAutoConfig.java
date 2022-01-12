@@ -6,6 +6,9 @@ import cn.edu.jxau.db.router.common.Constants;
 import cn.edu.jxau.db.router.common.PropertyUtil;
 import cn.edu.jxau.db.router.dynamic.DynamicDataSource;
 import cn.edu.jxau.db.router.dynamic.SplitTableMyBatisPlugin;
+import cn.edu.jxau.db.router.load.balance.IDbRouterLoadBalance;
+import cn.edu.jxau.db.router.load.balance.impl.DbRouterLoadBalancePoll;
+import cn.edu.jxau.db.router.load.balance.impl.DbRouterLoadBalanceRandom;
 import cn.edu.jxau.db.router.strategy.IDbRouterStrategy;
 import cn.edu.jxau.db.router.strategy.impl.DbRouterStrategyHash;
 import cn.edu.jxau.db.router.strategy.impl.DbRouterStrategyRandom;
@@ -18,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.util.ObjectUtils;
 
 import javax.sql.DataSource;
 import java.util.HashMap;
@@ -71,11 +75,40 @@ public class DataSourceAutoConfig implements EnvironmentAware {
      */
     private Integer tbCount;
 
+
     /**
      * 默认分库分表字段
      */
     private String defaultRouterKey;
 
+    /**
+     * 默认数据源名称
+     */
+    private String defaultDataSource;
+
+    /**
+     * 主库 -> 从库数量
+     */
+    private Map<String, Integer> masterToSlaveCount = new HashMap<>();
+
+
+    @Bean
+    public Map<Constants.LoadBalance, IDbRouterLoadBalance> dbRouterLoadBalanceMap(DbRouterLoadBalanceRandom dbRouterLoadBalanceRandom, DbRouterLoadBalancePoll dbRouterLoadBalancePoll) {
+        Map<Constants.LoadBalance, IDbRouterLoadBalance> dbRouterLoadBalanceMap = new HashMap<>(16);
+        dbRouterLoadBalanceMap.put(Constants.LoadBalance.POLL, dbRouterLoadBalancePoll);
+        dbRouterLoadBalanceMap.put(Constants.LoadBalance.RANDOM, dbRouterLoadBalanceRandom);
+        return dbRouterLoadBalanceMap;
+    }
+
+    @Bean
+    public DbRouterLoadBalancePoll dbRouterLoadBalancePoll() {
+        return new DbRouterLoadBalancePoll();
+    }
+
+    @Bean
+    public DbRouterLoadBalanceRandom dbRouterLoadBalanceRandom() {
+        return new DbRouterLoadBalanceRandom();
+    }
 
     @Bean
     public Map<Constants.DbRouterStrategy, IDbRouterStrategy> dbRouterStrategyMap(DbRouterStrategyHash dbRouterStrategyHash, DbRouterStrategyRandom dbRouterStrategyRandom) {
@@ -97,7 +130,7 @@ public class DataSourceAutoConfig implements EnvironmentAware {
 
     @Bean
     public DbRouterConfig dbRouterConfig() {
-        return new DbRouterConfig(dbCount, tbCount, defaultRouterKey);
+        return new DbRouterConfig(dbCount, tbCount, defaultRouterKey, masterToSlaveCount);
     }
 
     @Bean(name = "db-router-point")
@@ -114,14 +147,40 @@ public class DataSourceAutoConfig implements EnvironmentAware {
     @Bean
     public DataSource dataSource() {
         Map<Object, Object> targetDataSources = new HashMap<>(16);
+        // 加载 dbList
         for (String dbInfo : dataSourceConfig.keySet()) {
-            Map<String, Object> objMap = dataSourceConfig.get(dbInfo);
-            targetDataSources.put(dbInfo, new DriverManagerDataSource(objMap.get("url").toString(), objMap.get("username").toString(), objMap.get("password").toString()));
+            Map<String, Object> dbInfoMap = dataSourceConfig.get(dbInfo);
+            Map<String, Object> writeDbInfoMap = (Map<String, Object>) dbInfoMap.get("write");
+            targetDataSources.put(dbInfo, new DriverManagerDataSource(writeDbInfoMap.get("url").toString(), writeDbInfoMap.get("username").toString(), writeDbInfoMap.get("password").toString()));
+
+            String[] readList = dbInfoMap.get("readList").toString().split(SPLIT);
+            if(ObjectUtils.isEmpty(readList)) {
+                break;
+            }
+
+            for(String dbReadInfo : readList) {
+                Map<String, Object> readDbInfoMap = (Map<String, Object>) dbInfoMap.get(dbReadInfo);
+                targetDataSources.put(dbReadInfo, new DriverManagerDataSource(readDbInfoMap.get("url").toString(), readDbInfoMap.get("username").toString(), readDbInfoMap.get("password").toString()));
+            }
+            masterToSlaveCount.put(dbInfo, readList.length);
         }
 
         DynamicDataSource dynamicDataSource = new DynamicDataSource();
         dynamicDataSource.setTargetDataSources(targetDataSources);
-        dynamicDataSource.setDefaultTargetDataSource(new DriverManagerDataSource(defaultDataSourceConfig.get("url").toString(), defaultDataSourceConfig.get("username").toString(), defaultDataSourceConfig.get("password").toString()));
+
+        // 加载 defaultDataSource
+        Map<String, Object> defaultDbInfoMap = (Map<String, Object>) defaultDataSourceConfig.get("write");
+        dynamicDataSource.setDefaultTargetDataSource(new DriverManagerDataSource(defaultDbInfoMap.get("url").toString(), defaultDbInfoMap.get("username").toString(), defaultDbInfoMap.get("password").toString()));
+        targetDataSources.put(defaultDataSource, new DriverManagerDataSource(defaultDbInfoMap.get("url").toString(), defaultDbInfoMap.get("username").toString(), defaultDbInfoMap.get("password").toString()));
+
+        String[] readList = defaultDataSourceConfig.get("readList").toString().split(SPLIT);
+        if(!ObjectUtils.isEmpty(readList)) {
+            for(String dbReadInfo : readList) {
+                Map<String, Object> defaultReadDbInfoMap = (Map<String, Object>) defaultDataSourceConfig.get(dbReadInfo);
+                targetDataSources.put(dbReadInfo, new DriverManagerDataSource(defaultReadDbInfoMap.get("url").toString(), defaultReadDbInfoMap.get("username").toString(), defaultReadDbInfoMap.get("password").toString()));
+            }
+            masterToSlaveCount.putIfAbsent(defaultDataSource, readList.length);
+        }
 
         return dynamicDataSource;
     }
@@ -134,11 +193,11 @@ public class DataSourceAutoConfig implements EnvironmentAware {
 
         defaultRouterKey = environment.getProperty(CONFIG_PREFIX + DEFAULT_ROUTER_KEY);
 
-        String defaultDataSource = environment.getProperty(CONFIG_PREFIX + DEFAULT_DATA_SOURCE);
+        defaultDataSource = environment.getProperty(CONFIG_PREFIX + DEFAULT_DATA_SOURCE);
         defaultDataSourceConfig = PropertyUtil.handle(environment, CONFIG_PREFIX + defaultDataSource, Map.class);
 
-
         String dataSources = environment.getProperty(CONFIG_PREFIX + DB_LIST);
+
 
         assert dataSources != null;
         for (String dbInfo : dataSources.split(SPLIT)) {

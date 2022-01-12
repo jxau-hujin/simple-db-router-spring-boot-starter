@@ -26,7 +26,7 @@ public class DbRouterStrategyRandom extends AbstractDbRouterStrategy {
         int dbIdx = secureRandom.nextInt(dbCount);
         int tbIdx = secureRandom.nextInt(tbCount);
 
-        DbContextHolder.setDBKey(String.format("%02d", dbIdx));
+        DbContextHolder.setDBKey(DbContextHolder.DB_PREFIX + String.format("%02d", dbIdx));
         DbContextHolder.setTBKey(String.format("%02d", tbIdx));
         logger.info("数据库路由 dbIdx：{} tbIdx：{} val: {}",  dbIdx, tbIdx, val);
     }
