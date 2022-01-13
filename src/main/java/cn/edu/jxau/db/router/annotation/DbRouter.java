@@ -21,19 +21,19 @@ public @interface DbRouter {
     String splitKey() default "";
 
     /**
-     * 是否分表
-     * @return
-     */
-    boolean needSplitTable() default false;
-
-    /**
      * 分库分表策略
      * @return
      */
     Constants.DbRouterStrategy strategy() default Constants.DbRouterStrategy.HASHCODE;
 
     /**
-     * 读写分离
+     * 是否分表
+     * @return
+     */
+    boolean needSplitTable() default false;
+
+    /**
+     * 请求类型（读请求、写请求）
      */
     Constants.DataSourceType operationType() default Constants.DataSourceType.WRITE;
 

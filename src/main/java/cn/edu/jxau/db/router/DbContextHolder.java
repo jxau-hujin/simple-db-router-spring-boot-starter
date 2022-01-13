@@ -17,7 +17,10 @@ public class DbContextHolder {
 
     private static final ThreadLocal<String> tbKey = new ThreadLocal<String>();
 
-    private static final ThreadLocal<Constants.DataSourceType> opType = new ThreadLocal<>();
+    /**
+     * 为了支持声明型事务默认操作类型为写
+     */
+    private static final ThreadLocal<Constants.DataSourceType> opType = ThreadLocal.withInitial(() -> Constants.DataSourceType.WRITE);
 
     private static final ThreadLocal<Constants.LoadBalance> loadBalance = new ThreadLocal<>();
 
