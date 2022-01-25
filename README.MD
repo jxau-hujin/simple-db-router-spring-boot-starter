@@ -1,6 +1,6 @@
 # 简易分库分表 Starter
-![简易分库分表 Starter](https://typora-1300369948.cos.ap-shanghai.myqcloud.com//halo/img/%E7%AE%80%E6%98%93%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%20Starter.png)
 
+![简易分库分表 Starter](https://typora-1300369948.cos.ap-shanghai.myqcloud.com//halo/img/%E7%AE%80%E6%98%93%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%20Starter.png)
 
 ## 为什么需要分库分表？
 
